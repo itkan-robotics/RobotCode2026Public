@@ -40,7 +40,7 @@ The robot tracks **where it is on the field** using wheel encoders and a gyro (P
 
 ---
 
-## Shooting — distance-based and shoot-on-the-move (SOTM)
+## Distance-based and shoot-on-the-move (SOTM) Shooting
 
 Shooter flywheel speed depends on **distance to the hub**. A lookup table maps distance to rotations per second (RPS), so the robot can score from different positions on the field.
 
