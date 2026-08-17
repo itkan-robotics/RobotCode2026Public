@@ -1,0 +1,122 @@
+{
+  "version": "2025.0",
+  "waypoints": [
+    {
+      "anchor": {
+        "x": 3.0,
+        "y": 2.5999999999999996
+      },
+      "prevControl": null,
+      "nextControl": {
+        "x": 2.309406880189799,
+        "y": 2.1360023724792403
+      },
+      "isLocked": false,
+      "linkedName": "rightCloseBackShot"
+    },
+    {
+      "anchor": {
+        "x": 3.0,
+        "y": 0.5519999999999996
+      },
+      "prevControl": {
+        "x": 2.266370106761567,
+        "y": 0.5651601423487548
+      },
+      "nextControl": {
+        "x": 3.9573067587639668,
+        "y": 0.5348274538253243
+      },
+      "isLocked": false,
+      "linkedName": null
+    },
+    {
+      "anchor": {
+        "x": 7.985349500713266,
+        "y": 0.5519999999999996
+      },
+      "prevControl": {
+        "x": 7.7201638626144815,
+        "y": 0.2805778051360531
+      },
+      "nextControl": {
+        "x": 8.916932952924393,
+        "y": 1.5054921540656225
+      },
+      "isLocked": false,
+      "linkedName": null
+    },
+    {
+      "anchor": {
+        "x": 8.295877318116975,
+        "y": 4.973052781740371
+      },
+      "prevControl": {
+        "x": 8.554650499286733,
+        "y": 4.7919115549215405
+      },
+      "nextControl": null,
+      "isLocked": false,
+      "linkedName": null
+    }
+  ],
+  "rotationTargets": [
+    {
+      "waypointRelativePos": 0.21108742004264275,
+      "rotationDegrees": 0.0
+    },
+    {
+      "waypointRelativePos": 1.55,
+      "rotationDegrees": 0.0
+    },
+    {
+      "waypointRelativePos": 2.0916844349680104,
+      "rotationDegrees": 90.0
+    }
+  ],
+  "constraintZones": [],
+  "pointTowardsZones": [],
+  "eventMarkers": [
+    {
+      "name": "Stop_Shoot",
+      "waypointRelativePos": 0,
+      "endWaypointRelativePos": null,
+      "command": {
+        "type": "named",
+        "data": {
+          "name": "Stop_Shoot"
+        }
+      }
+    },
+    {
+      "name": "Intake_Fuel",
+      "waypointRelativePos": 0.5995948683321974,
+      "endWaypointRelativePos": 3.0,
+      "command": {
+        "type": "named",
+        "data": {
+          "name": "Intake_Fuel"
+        }
+      }
+    }
+  ],
+  "globalConstraints": {
+    "maxVelocity": 3.0,
+    "maxAcceleration": 7.0,
+    "maxAngularVelocity": 600.0,
+    "maxAngularAcceleration": 700.0,
+    "nominalVoltage": 12.0,
+    "unlimited": false
+  },
+  "goalEndState": {
+    "velocity": 0,
+    "rotation": 91.736
+  },
+  "reversed": false,
+  "folder": null,
+  "idealStartingState": {
+    "velocity": 0,
+    "rotation": -132.122
+  },
+  "useDefaultConstraints": false
+}
