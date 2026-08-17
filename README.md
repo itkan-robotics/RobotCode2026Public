@@ -1,11 +1,6 @@
 # FRC-REBUILT-2026
 
-**Team 9128 — ITKAN Robotics**
-
-Competition robot software for a swerve-drive fuel shooter, built on **WPILib 2026.1.1**, **Java 17**, **AdvantageKit 26**, **CTRE Phoenix 6**, and **PathPlanner 2026.1.2**.
-
-This README is written for two audiences: anyone curious about what the robot does on the field, and FRC programmers who want to see how the pieces fit together.
-
+Team 9128: ITKAN Robotics
 ---
 
 ## What this robot does
@@ -14,24 +9,11 @@ On the field, the robot drives, collects game pieces from the floor, moves them 
 
 | Subsystem | What it does |
 |-----------|--------------|
-| **Drive** | Moves in any direction — forward, sideways, or spinning in place (swerve drive) |
+| **Drive** | Moves and rotate in any direction (swerve drive) |
 | **Intake** | Picks up game pieces from the floor and can deploy or retract |
 | **Transfer + Conveyor** | Moves pieces through the robot toward the shooter |
 | **Shooter** | Spins flywheels and launches pieces into the hub |
 | **Vision** | Camera reads AprilTags on the field to correct the robot's position estimate |
-
-### Game piece path
-
-```mermaid
-flowchart LR
-  Floor[GamePiecesOnFloor] --> Intake
-  Intake --> Transfer
-  Transfer --> Conveyor
-  Conveyor --> Shooter
-  Shooter --> Hub[AllianceHub]
-```
-
----
 
 ## How the software is organized
 
@@ -39,57 +21,22 @@ The code is split into **subsystems** (the robot's mechanical parts in software)
 
 When the robot starts, it boots through a short chain of classes, sets up logging, creates all subsystems, registers button bindings, and loads autonomous routines.
 
-```mermaid
-flowchart TB
-  Main[Main.java] --> Robot[Robot.java AdvantageKit logging]
-  Robot --> RC[RobotContainer.java]
-  RC --> Drive
-  RC --> Vision
-  RC --> Intake
-  RC --> Transfer
-  RC --> Conveyor
-  RC --> Shooter
-  RC --> Commands[commands/ shooting driving auto]
-  RC --> AutoChooser[PathPlanner Auto Chooser]
-```
-
-> **Under the hood:** This project follows the WPILib **command-based** architecture from the [Mechanical Advantage / AdvantageKit](https://github.com/Mechanical-Advantage) template. Entry chain: [`Main.java`](src/main/java/frc/robot/Main.java) → [`Robot.java`](src/main/java/frc/robot/Robot.java) → [`RobotContainer.java`](src/main/java/frc/robot/RobotContainer.java). The command scheduler runs each robot loop; subsystems expose methods, and commands orchestrate them over time.
-
 ---
 
 ## Swerve drive and pose estimation
 
-Swerve drive means four independent wheel modules — one at each corner — each with its own steering angle and drive speed. The robot can move in any direction while rotating, which is essential for scoring quickly without stopping to turn.
+Swerve drive means four independent wheel modules, each with its own steering angle and drive speed. The robot can move in any direction while rotating, which is essential for scoring quickly without stopping to turn.
 
 The robot tracks **where it is on the field** using wheel encoders and a gyro (Pigeon 2). That estimate drifts over time, so a **Limelight** camera reads AprilTags and corrects position. The fused result feeds autonomous paths, hub aiming, and shoot-on-the-move (SOTM) calculations.
 
-### Swerve layout
-
-```
-        FL ────── FR
-         │   ↑    │
-         │ robot  │
-        BL ────── BR
-   Each corner: steer angle + drive speed
-```
 
 ### Pose pipeline
 
-```mermaid
-flowchart LR
-  Encoders[WheelEncoders] --> Odometry[SwerveOdometry]
-  Gyro[Pigeon2Gyro] --> Odometry
-  Odometry --> Estimator[PoseEstimator]
-  Limelight[LimelightMegaTag] --> VisionSubsystem[Vision.java]
-  VisionSubsystem --> Estimator
-  Estimator --> FieldPose[RobotPoseOnField]
-  FieldPose --> Auto[AutonomousPaths]
-  FieldPose --> SOTM[ShootOnTheMove]
-```
-
-> **Under the hood:** [`Drive.java`](src/main/java/frc/robot/subsystems/drive/Drive.java) runs swerve kinematics, odometry, PathPlanner `AutoBuilder`, and SysId routines. [`Vision.java`](src/main/java/frc/robot/subsystems/vision/Vision.java) fuses Limelight MegaTag 1 and MegaTag 2 observations with ambiguity and Z-error filtering before calling `drive.addVisionMeasurement()`. Swerve geometry and gains come from CTRE-generated [`TunerConstants.java`](src/main/java/frc/robot/generated/TunerConstants.java) — regenerate from CTRE Tuner X, do not hand-edit.
+[`Drive.java`](src/main/java/frc/robot/subsystems/drive/Drive.java) runs swerve kinematics, odometry, PathPlanner `AutoBuilder`, and SysId routines. [`Vision.java`](src/main/java/frc/robot/subsystems/vision/Vision.java) fuses Limelight MegaTag 1 and MegaTag 2 observations with ambiguity and Z-error filtering before calling `drive.addVisionMeasurement()`. Swerve geometry and gains come from CTRE-generated [`TunerConstants.java`](src/main/java/frc/robot/generated/TunerConstants.java) *(Note: regenerate from CTRE Tuner X, do not hand-edit)*.
 >
-> **IO abstraction:** `ModuleIO`, `GyroIO`, and `VisionIO` interfaces let the same subsystem logic run in three modes. `RobotContainer` swaps implementations for REAL (TalonFX + Pigeon 2), SIM (`ModuleIOSim`), and REPLAY (no-op IO for log playback).
+### IO abstraction:
+
+`ModuleIO`, `GyroIO`, and `VisionIO` interfaces let the same subsystem logic run in three modes. `RobotContainer` swaps implementations for REAL (TalonFX + Pigeon 2), SIM (`ModuleIOSim`), and REPLAY (no-op IO for log playback).
 
 ---
 
@@ -97,53 +44,29 @@ flowchart LR
 
 Shooter flywheel speed depends on **distance to the hub**. A lookup table maps distance to rotations per second (RPS), so the robot can score from different positions on the field.
 
-**Shoot-on-the-move (SOTM)** is harder: while the robot is driving, it must aim where the hub *will be* when the piece arrives — not where it is right now. The software models time of flight, adjusts the target based on current speed, and iterates until the flywheel setpoint converges.
+**Shoot-on-the-move (SOTM)** is harder: while the robot is driving, it must aim where the hub *will be* when the piece arrives, not where it is right now. The software models time of flight, adjusts the target based on current speed, and iterates until the flywheel setpoint converges.
 
 | Mode | How it works |
 |------|--------------|
-| **Teleop smart shoot** | Hold **R1** — flywheel speed, feeding, agitation, and auto-aim drive run together |
+| **Teleop smart shoot** | Hold **R1** and flywheel speed, feeding, agitation, and auto-aim drive run together |
 | **Preset shots** | Triangle / Circle / Cross / Square trigger fixed-RPS shots for known distances |
 | **Autonomous SOTM** | PathPlanner runs path segments while named commands `SOTM_Heading` and `SOTM_Shoot` fire in parallel |
 
 ### SOTM concept
 
-```mermaid
-flowchart TB
-  subgraph moving [RobotIsMoving]
-    Pose[CurrentPose] --> Speeds[ChassisSpeeds]
-    Speeds --> VirtualGoal[VirtualGoalPose lead target]
-    VirtualGoal --> Distance[AdjustedDistance]
-    Distance --> Flywheel[FlywheelSetpoint]
-    Flywheel --> Feed[TransferAndConveyorFeed]
-  end
-  Hub[HubTarget] --> VirtualGoal
-```
-
-> **Under the hood:** [`SOTMUtil.java`](src/main/java/frc/robot/util/SOTMUtil.java) implements a quadratic time-of-flight model and iterative convergence via `computeConvergedShot()`. [`HubShiftUtil.java`](src/main/java/frc/robot/util/HubShiftUtil.java) tracks the 2026 alliance hub shift; the operator can override with L1/R1 on the operator controller. Key commands: [`SmartShootCommand`](src/main/java/frc/robot/commands/SmartShootCommand.java) (teleop), [`HubSOTMShotCommand`](src/main/java/frc/robot/commands/HubSOTMShotCommand.java) (auto), [`SotmHeadingOverrideCommand`](src/main/java/frc/robot/commands/SotmHeadingOverrideCommand.java) (overrides PathPlanner rotation PID during SOTM path segments). Field geometry and scoring zones live in [`Constants.FieldConstants`](src/main/java/frc/robot/Constants.java).
+[`SOTMUtil.java`](src/main/java/frc/robot/util/SOTMUtil.java) implements a quadratic time-of-flight model and iterative convergence via `computeConvergedShot()`. [`HubShiftUtil.java`](src/main/java/frc/robot/util/HubShiftUtil.java) tracks the 2026 alliance hub shift; the operator can override with L1/R1 on the operator controller. Key commands: [`SmartShootCommand`](src/main/java/frc/robot/commands/SmartShootCommand.java) (teleop), [`HubSOTMShotCommand`](src/main/java/frc/robot/commands/HubSOTMShotCommand.java) (auto), [`SotmHeadingOverrideCommand`](src/main/java/frc/robot/commands/SotmHeadingOverrideCommand.java) (overrides PathPlanner rotation PID during SOTM path segments). Field geometry and scoring zones live in [`Constants.FieldConstants`](src/main/java/frc/robot/Constants.java).
 
 ---
 
 ## Autonomous routines (PathPlanner)
 
-Before each match, the drive team picks an auto from the dashboard. The robot follows pre-drawn paths on the field and, at specific moments, runs **named commands** — intake fuel, align to hub, shoot, or SOTM while still driving.
+Before each match, the drive team picks an auto from the dashboard. The robot follows pre-drawn paths on the field and, at specific moments, runs **named commands** (e.g.intake fuel, align to hub, shoot, SOTM, etc.).
 
 The repo includes **35+ auto routines** and **85+ paths** under [`src/main/deploy/pathplanner/`](src/main/deploy/pathplanner/). Examples include standard left/right cycles (`1678T-L`, `1678T-R`), SOTM variants (`1678T-L-SOTM`, `1678T-L-90-SOTM`), steal routes, and tuning autos (`zTranslateTune`, `zRotateTune`).
 
 ### Example: `1678T-L-SOTM.auto`
 
 This auto drives a cycle path, shoots on the move during a deadline group, stops the shooter, finishes the path, fires a stationary shot, and premoves toward the next position.
-
-```mermaid
-flowchart TD
-  A["Path: Cycle1"] --> B["DeadlineGroup while moving"]
-  B --> B1[SOTM_Heading]
-  B --> B2[SOTM_Shoot]
-  B --> B3["Path: PreSOTM"]
-  B --> C[Stop_Shoot]
-  C --> D["Path: PostSOTM"]
-  D --> E["Shoot_Fuel stationary"]
-  E --> F["Path: Premove"]
-```
 
 ### Named commands available to autos
 
@@ -158,28 +81,19 @@ flowchart TD
 | `SOTM_Heading` / `SOTM_Heading_Stop` | Enable / disable SOTM heading override on PathPlanner |
 | `SOTM_Shoot` | Shoot-on-the-move with agitation |
 
-> **Under the hood:** Named commands are registered in `RobotContainer.registerNamedCommands()`. PathPlanner holonomic controller P gains are tunable via [`Constants.PathPlannerConstants`](src/main/java/frc/robot/Constants.java) and `LoggedTunableNumber` on the dashboard. Pathfinding uses [`LocalADStarAK`](src/main/java/frc/robot/util/LocalADStarAK.java), a replay-safe wrapper around PathPlanner's AD* pathfinder.
+Named commands are registered in `RobotContainer.registerNamedCommands()`. PathPlanner holonomic controller P gains are tunable via [`Constants.PathPlannerConstants`](src/main/java/frc/robot/Constants.java) and `LoggedTunableNumber` on the dashboard. Pathfinding uses [`LocalADStarAK`](src/main/java/frc/robot/util/LocalADStarAK.java), a replay-safe wrapper around PathPlanner's AD* pathfinder.
 
 ---
 
-## AdvantageKit — develop, log, replay
+## AdvantageKit
 
 Every sensor reading, pose update, and command decision can be recorded. After a match or practice run, replay the log through simulation to debug timing and tuning without being on the robot.
-
-```mermaid
-flowchart LR
-  REAL["REAL on roboRIO"] --> WPILOG["USB log + NT4"]
-  SIM["SIM on laptop"] --> NT4[NetworkTables]
-  REPLAY["REPLAY from log"] --> SimOutput[Re-simulate outputs]
-```
 
 | Mode | When | What gets logged |
 |------|------|------------------|
 | **REAL** | Running on the roboRIO | WPILOG to USB (`/U/logs`) + NetworkTables (NT4) |
 | **SIM** | Physics simulation on a laptop | NetworkTables only |
 | **REPLAY** | Playing back a recorded log | Re-runs logic; writes a new `_sim` log |
-
-> **Under the hood:** [`Robot.java`](src/main/java/frc/robot/Robot.java) configures receivers per mode (lines 52–74). Subsystem IO uses `@AutoLog` inputs for replay-safe state. Run `./gradlew replayWatch` to replay a log with live visualization. Dashboard layout is in [`elastic-layout.json`](elastic-layout.json) (auto chooser, match time, hub status).
 
 ---
 
@@ -198,4 +112,4 @@ flowchart LR
 | Operator L1 / R1 | Manual hub-shift override |
 | Controller 5 (if connected) | Tuning: coast/brake/zero intake, PID shooter, manual feed |
 
-Controllers are PS5: driver (port 0), operator (port 1), optional test pad (port 5).
+We use PS5 controllers: driver (port 0), operator (port 1), optional test pad (port 5).
