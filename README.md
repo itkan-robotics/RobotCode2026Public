@@ -1,6 +1,4 @@
-# FRC-REBUILT-2026
-
-Team 9128: ITKAN Robotics
+FRC 9128 2026 Code: REBUILT
 ---
 
 ## What this robot does
